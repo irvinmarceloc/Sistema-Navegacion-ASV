@@ -21,13 +21,13 @@ def orientar(vehicle, obstaculo):
             b = a + 90
     return b 
 
-#Genera coordenada aleatoria entre 5 a 10 metros a 90 o -90 grados con respecto al ángulo de avance
+#Genera coordenada a 10 metros a 90 o -90 grados con respecto al ángulo de avance
 def generar_coordenadas(a, vehicle):
     distance = 10
     angle_rad = radians(a)
     lat_base = vehicle.location.global_frame.lat
     lon_base = vehicle.location.global_frame.lon
-    return lat_base + (distance * cos(angle_rad)) / 111111 * cos(radians(lat_base)) , lon_base + (distance * sin(angle_rad)) / 111111 * cos(radians(lat_base))
+    return lat_base + (distance * cos(angle_rad))  , lon_base + (distance * sin(angle_rad)) 
 
 # Función para obtener el estado actual de los obstáculos desde el servidor Flask
 def obtener_estado_obstaculos():
@@ -132,7 +132,7 @@ while waypoint_index <= len(waypoints):
         #Contador de maniobras evasibas fallidas 
             num_man_evas += 1
         if obstaculo_anterior and not obstaculo[1]:
-            vehicle.airspeed = 10
+            vehicle.airspeed = 2
             vehicle.simple_goto(waypoint)
         obstaculo_anterior = obstaculo[1]
         # Esperar un tiempo antes de realizar la siguiente verificación
