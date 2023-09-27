@@ -1,8 +1,7 @@
 from dronekit import connect, VehicleMode, LocationGlobal
 import time
-from math import sin, cos, sqrt, atan2, radians
+from math import radians, cos, sin, degrees, atan2, sqrt
 import requests
-
 
 # Conectar al vehículo
 vehicle = connect('tcp:127.0.0.1:5763', wait_ready=True)
@@ -14,32 +13,46 @@ vehicle.mode = VehicleMode("GUIDED")
 def orientar(vehicle, obstaculo):
     a = vehicle.heading
     b = a
-    if obstaculo[1]:
-        if obstaculo[2]:
-            b = a - 90
-        if obstaculo[0]:
-            b = a + 90
+    
+    casos = {
+        (True, True, False): a - 90,
+        (False, True, True): a + 90,
+        (True, True, True): a + 90,
+        (False, True, False): a + 90,
+    }
+    
+    if tuple(obstaculo) in casos:
+        b = casos[tuple(obstaculo)]
+        
     return b 
 
 #Genera coordenada a 10 metros a 90 o -90 grados con respecto al ángulo de avance
 def generar_coordenadas(a, vehicle):
-    distance = 10
-    angle_rad = radians(a)
+    distance_meters = 10  # Distancia en metros
     lat_base = vehicle.location.global_frame.lat
     lon_base = vehicle.location.global_frame.lon
-    return lat_base + (distance * cos(angle_rad))  , lon_base + (distance * sin(angle_rad)) 
+
+    # Convertir distancia en metros a diferencia en grados decimales
+    lat_correction = (distance_meters / 111111) * cos(radians(lat_base))
+    lon_correction = (distance_meters / (111111 * cos(radians(lat_base))))
+
+    # Convertir ángulo a radianes
+    angle_rad = radians(a)
+
+    # Calcular las nuevas coordenadas
+    lat_nueva = lat_base + degrees(lat_correction)
+    lon_nueva = lon_base + degrees(lon_correction / cos(radians(lat_base))) / sin(atan2(1, 1) * 4 + angle_rad)
+
+    return lat_nueva, lon_nueva
+
 
 # Función para obtener el estado actual de los obstáculos desde el servidor Flask
 def obtener_estado_obstaculos():
     response = requests.get('http://localhost:5000/obstaculos')
     obstaculos = response.json()
-    resp = obstaculos
-    if obstaculos[0] == "0":
-        resp[0] = 1
-    if obstaculos[1] == "0":
-        resp[1] = 1
-    if obstaculos[2] == "0":
-        resp[2] = 1
+
+    resp = [int(obstaculo) for obstaculo in obstaculos]
+
     return resp
     
 def calcular_distancia(coord1, coord2):
@@ -48,13 +61,10 @@ def calcular_distancia(coord1, coord2):
     lat2, lon2 = coord2
 
     # Radio de la Tierra en metros
-    r = 6371000
+    r = 6371000.0
 
     # Convertir las coordenadas a radianes
-    lat1_rad = radians(lat1)
-    lon1_rad = radians(lon1)
-    lat2_rad = radians(lat2)
-    lon2_rad = radians(lon2)
+    lat1_rad, lon1_rad, lat2_rad, lon2_rad = map(radians, [lat1, lon1, lat2, lon2])
 
     # Diferencia de latitud y longitud
     dlat = lat2_rad - lat1_rad
